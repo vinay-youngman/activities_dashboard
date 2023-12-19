@@ -10,6 +10,7 @@ class ActivitiesDashboard(models.TransientModel):
     display_name = fields.Char(string='Display Name')
     sales_person = fields.Char(string='Sales Person')
     meeting_online = fields.Integer(string='Meeting Online')
+    modal_name = fields.Char(string='Modal')
     meeting_offline = fields.Integer(string='Meeting Offline')
     call = fields.Char(string='Call')
 
@@ -22,15 +23,16 @@ class ActivitiesDashboard(models.TransientModel):
             self.env.cr.execute(query_truncate)
             self.env.cr.commit()
 
-            query = """
+            query = """           
             SELECT *
             FROM (
                 SELECT
                     res_partner.display_name,
+                    'crm' AS modal,
                     COALESCE(res_users.login, 'NO Sales Person') AS sales_person,
-                    COUNT(CASE WHEN mail_message.subtype_id = 3 AND mail_message.mail_activity_type_id = 24 THEN mail_message.id END) as MeetingOnline,
-                    COUNT(CASE WHEN mail_message.subtype_id = 3 AND mail_message.mail_activity_type_id = 25 THEN mail_message.id END) as MeetingOffline,
-                    COUNT(CASE WHEN mail_message.subtype_id = 3 AND mail_message.mail_activity_type_id = 2 THEN mail_message.id END) as Call_
+                    COUNT(CASE WHEN mail_message.subtype_id = 3 AND mail_message.mail_activity_type_id = 24 THEN mail_message.id END) AS MeetingOnline,
+                    COUNT(CASE WHEN mail_message.subtype_id = 3 AND mail_message.mail_activity_type_id = 25 THEN mail_message.id END) AS MeetingOffline,
+                    COUNT(CASE WHEN mail_message.subtype_id = 3 AND mail_message.mail_activity_type_id = 2 THEN mail_message.id END) AS Call_
                 FROM
                     mail_message
                 INNER JOIN
@@ -41,22 +43,23 @@ class ActivitiesDashboard(models.TransientModel):
                     res_users ON crm_lead.user_id = res_users.id
                 WHERE
                     (
-                        (mail_message.subtype_id = 3 AND mail_message.mail_activity_type_id = 24 and mail_message.create_date >= current_date)
-                        OR (mail_message.subtype_id = 3 AND mail_message.mail_activity_type_id = 25 and mail_message.create_date >= current_date)
-                        OR (mail_message.subtype_id = 3 AND mail_message.mail_activity_type_id = 2 and mail_message.create_date >= current_date)
+                        (mail_message.subtype_id = 3 AND mail_message.mail_activity_type_id = 24 AND mail_message.create_date >= CURRENT_DATE)
+                        OR (mail_message.subtype_id = 3 AND mail_message.mail_activity_type_id = 25 AND mail_message.create_date >= CURRENT_DATE)
+                        OR (mail_message.subtype_id = 3 AND mail_message.mail_activity_type_id = 2 AND mail_message.create_date >= CURRENT_DATE)
                     )
                     AND model = 'crm.lead'
                 GROUP BY
                     res_partner.display_name, res_users.login
-
+            
                 UNION
-
+            
                 SELECT
                     res_partner.display_name,
+                    'contacts' AS modal,
                     COALESCE(res_users.login, 'NO Sales Person') AS sales_person,
-                    COUNT(CASE WHEN mail_message.subtype_id = 3 AND mail_message.mail_activity_type_id = 24 THEN mail_message.id END) as MeetingOnline,
-                    COUNT(CASE WHEN mail_message.subtype_id = 3 AND mail_message.mail_activity_type_id = 25 THEN mail_message.id END) as MeetingOffline,
-                    COUNT(CASE WHEN mail_message.subtype_id = 3 AND mail_message.mail_activity_type_id = 2 THEN mail_message.id END) as Call_
+                    COUNT(CASE WHEN mail_message.subtype_id = 3 AND mail_message.mail_activity_type_id = 24 THEN mail_message.id END) AS MeetingOnline,
+                    COUNT(CASE WHEN mail_message.subtype_id = 3 AND mail_message.mail_activity_type_id = 25 THEN mail_message.id END) AS MeetingOffline,
+                    COUNT(CASE WHEN mail_message.subtype_id = 3 AND mail_message.mail_activity_type_id = 2 THEN mail_message.id END) AS Call_
                 FROM
                     mail_message
                 INNER JOIN
@@ -65,9 +68,9 @@ class ActivitiesDashboard(models.TransientModel):
                     res_users ON mail_message.create_uid = res_users.id
                 WHERE
                     (
-                        (mail_message.subtype_id = 3 AND mail_message.mail_activity_type_id = 24 and mail_message.create_date >= current_date)
-                        OR (mail_message.subtype_id = 3 AND mail_message.mail_activity_type_id = 25 and mail_message.create_date >= current_date)
-                        OR (mail_message.subtype_id = 3 AND mail_message.mail_activity_type_id = 2 and mail_message.create_date >= current_date)
+                        (mail_message.subtype_id = 3 AND mail_message.mail_activity_type_id = 24 AND mail_message.create_date >= CURRENT_DATE)
+                        OR (mail_message.subtype_id = 3 AND mail_message.mail_activity_type_id = 25 AND mail_message.create_date >= CURRENT_DATE)
+                        OR (mail_message.subtype_id = 3 AND mail_message.mail_activity_type_id = 2 AND mail_message.create_date >= CURRENT_DATE)
                     )
                     AND model = 'res.partner'
                 GROUP BY
@@ -81,9 +84,10 @@ class ActivitiesDashboard(models.TransientModel):
                 vals = {
                     'display_name': row[0],
                     'sales_person': row[1],
-                    'meeting_online': row[2],
-                    'meeting_offline': row[3],
-                    'call': row[4],
+                    'modal_name': row[2],
+                    'meeting_online': row[3],
+                    'meeting_offline': row[4],
+                    'call': row[5],
                 }
                 create_first_data = self.create(vals)
                 _logger.info('Created record with ID: %s', create_first_data.id)
